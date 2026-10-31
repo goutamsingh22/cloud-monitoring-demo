@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pulse — Cloud Monitoring</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 15h4l2-8 4 14 2-6h6"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">Pulse</span>
+          <span class="brand-sub">Cloud Monitoring</span>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <span class="source-pill" id="source-pill">
+          <span class="source-dot"></span>
+          <span id="source-pill-text">Sample data</span>
+        </span>
+        <button class="icon-btn" id="refresh-btn" title="Refresh metrics" aria-label="Refresh metrics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+        <button class="icon-btn" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="page-head">
+      <div>
+        <h1 class="page-title">EC2 Fleet Overview</h1>
+        <p class="page-subtitle" id="page-subtitle">Loading metrics…</p>
+      </div>
+      <div class="controls">
+        <label class="control">
+          <span class="control-label">Instance</span>
+          <select id="instance-select" class="select" aria-label="Instance"></select>
+        </label>
+        <label class="control">
+          <span class="control-label">Range</span>
+          <select id="range-select" class="select" aria-label="Time range">
+            <option value="1">Last 1 hour</option>
+            <option value="6">Last 6 hours</option>
+            <option value="24" selected>Last 24 hours</option>
+            <option value="72">Last 3 days</option>
+          </select>
+        </label>
+        <label class="control">
+          <span class="control-label">Source</span>
+          <select id="source-select" class="select" aria-label="Data source">
+            <option value="auto" selected>Auto</option>
+            <option value="sample">Sample data</option>
+            <option value="cloudwatch">CloudWatch</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <div class="banner" id="warning-banner" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+      <span id="warning-text"></span>
+    </div>
+
+    <section class="stats" aria-label="Fleet summary">
+      <article class="stat-card">
+        <div class="stat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">Instances</span>
+          <span class="stat-value" id="stat-instances">—</span>
+          <span class="stat-foot" id="stat-instances-foot">monitored in fleet</span>
+        </div>
+      </article>
+
+      <article class="stat-card">
+        <div class="stat-icon green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">Average CPU</span>
+          <span class="stat-value" id="stat-avg-cpu">—</span>
+          <span class="stat-foot" id="stat-avg-cpu-foot">across all instances</span>
+        </div>
+      </article>
+
+      <article class="stat-card">
+        <div class="stat-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"></path>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">Peak CPU</span>
+          <span class="stat-value" id="stat-peak-cpu">—</span>
+          <span class="stat-foot" id="stat-peak-cpu-foot">highest observed</span>
+        </div>
+      </article>
+
+      <article class="stat-card">
+        <div class="stat-icon red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">Active Alerts</span>
+          <span class="stat-value" id="stat-alerts">—</span>
+          <span class="stat-foot" id="stat-alerts-foot">threshold breaches</span>
+        </div>
+      </article>
+    </section>
+
+    <div class="dashboard-grid">
+      <div class="dashboard-main">
+        <section class="panel chart-card">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title">CPU utilization</h2>
+              <p class="panel-sub" id="cpu-chart-sub">—</p>
+            </div>
+            <div class="chart-badges" id="cpu-badges"></div>
+          </div>
+          <div class="chart" id="chart-cpu"></div>
+        </section>
+
+        <section class="panel chart-card">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title">Network throughput</h2>
+              <p class="panel-sub" id="network-chart-sub">—</p>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch in"></span>In</span>
+              <span class="legend-item"><span class="legend-swatch out"></span>Out</span>
+            </div>
+          </div>
+          <div class="chart" id="chart-network"></div>
+        </section>
+
+        <section class="panel chart-card">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title">Disk read operations</h2>
+              <p class="panel-sub" id="disk-chart-sub">—</p>
+            </div>
+          </div>
+          <div class="chart chart-short" id="chart-disk"></div>
+        </section>
+
+        <section class="panel table-card">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title">Fleet instances</h2>
+              <p class="panel-sub">Select a row to inspect its metrics</p>
+            </div>
+            <span class="badge" id="fleet-badge">—</span>
+          </div>
+          <div class="table-wrap">
+            <table class="instance-table">
+              <thead>
+                <tr>
+                  <th>Instance</th>
+                  <th>Type</th>
+                  <th>Zone</th>
+                  <th class="num">Avg CPU</th>
+                  <th class="num">Peak CPU</th>
+                  <th class="num">Network</th>
+                  <th>Health</th>
+                </tr>
+              </thead>
+              <tbody id="instances-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <aside class="dashboard-side">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title">Alerts</h2>
+              <p class="panel-sub">Latest threshold breaches</p>
+            </div>
+            <span class="badge red" id="alerts-badge">0</span>
+          </div>
+          <div class="alerts" id="alerts-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title">Fleet health</h2>
+              <p class="panel-sub">Peak CPU based status</p>
+            </div>
+          </div>
+          <div class="health-bar" id="health-bar"></div>
+          <div class="health-legend" id="health-legend"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2 class="panel-title">Connected source</h2>
+              <p class="panel-sub" id="source-sub">—</p>
+            </div>
+          </div>
+          <dl class="meta-list">
+            <div><dt>Data source</dt><dd id="meta-source">—</dd></div>
+            <div><dt>Region</dt><dd id="meta-region">—</dd></div>
+            <div><dt>Period</dt><dd id="meta-period">—</dd></div>
+            <div><dt>Last updated</dt><dd id="meta-updated">—</dd></div>
+            <div><dt>CloudWatch</dt><dd id="meta-cloudwatch">—</dd></div>
+          </dl>
+          <p class="source-note" id="source-note">
+            Sample metrics are generated locally. Enable CloudWatch to query live
+            EC2 data from your AWS account.
+          </p>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="footer">
+      <span>Pulse Cloud Monitoring Demo</span>
+      <span>Python · Flask · Boto3 · CloudWatch</span>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
